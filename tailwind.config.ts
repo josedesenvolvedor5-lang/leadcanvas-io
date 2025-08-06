@@ -24,6 +24,16 @@ export default {
 				ring: 'hsl(var(--ring))',
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
+				
+				// CRM specific colors
+				'stage-new': 'hsl(var(--stage-new))',
+				'stage-contacted': 'hsl(var(--stage-contacted))',
+				'stage-qualified': 'hsl(var(--stage-qualified))',
+				'stage-proposal': 'hsl(var(--stage-proposal))',
+				'stage-won': 'hsl(var(--stage-won))',
+				'stage-lost': 'hsl(var(--stage-lost))',
+				'primary-glow': 'hsl(var(--primary-glow))',
+				'kanban-bg': 'hsl(var(--kanban-bg))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))'
@@ -62,6 +72,17 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				}
+			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-stage': 'var(--gradient-stage)',
+			},
+			boxShadow: {
+				'elevation': 'var(--shadow-elevation)',
+				'card': 'var(--shadow-card)',
+			},
+			transitionProperty: {
+				'smooth': 'var(--transition-smooth)',
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
