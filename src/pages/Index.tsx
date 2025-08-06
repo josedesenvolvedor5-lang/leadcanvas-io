@@ -4,13 +4,18 @@ import { KanbanBoard } from '@/components/pipeline/KanbanBoard';
 import { LeadForm } from '@/components/leads/LeadForm';
 import { StatsCards } from '@/components/dashboard/StatsCards';
 import { PipelineOverview } from '@/components/dashboard/PipelineOverview';
+import { PipelineManager } from '@/components/management/PipelineManager';
+import { CustomFieldManager } from '@/components/management/CustomFieldManager';
 import { mockLeads, mockPipelines, mockStages, mockCustomFields } from '@/data/mockData';
-import { Lead } from '@/types/crm';
+import { Lead, Pipeline, CustomField } from '@/types/crm';
 import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState('pipeline');
   const [leads, setLeads] = useState(mockLeads);
+  const [pipelines, setPipelines] = useState(mockPipelines);
+  const [customFields, setCustomFields] = useState(mockCustomFields);
+  const [activePipelineId, setActivePipelineId] = useState(mockPipelines[0]?.id || '');
   const [selectedLead, setSelectedLead] = useState<Lead | undefined>();
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
   const { toast } = useToast();
@@ -99,9 +104,9 @@ const Index = () => {
               <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
               <p className="text-muted-foreground">Visão geral do seu CRM</p>
             </div>
-            <StatsCards leads={leads} stages={mockStages} />
+            <StatsCards leads={leads} stages={pipelines.find(p => p.id === activePipelineId)?.stages || []} />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <PipelineOverview leads={leads} stages={mockStages} />
+              <PipelineOverview leads={leads} stages={pipelines.find(p => p.id === activePipelineId)?.stages || []} />
               <div className="space-y-4">
                 {/* Add more dashboard components here */}
               </div>
@@ -110,14 +115,44 @@ const Index = () => {
         );
       
       case 'pipeline':
+        const activePipeline = pipelines.find(p => p.id === activePipelineId);
+        const pipelineLeads = leads.filter(lead => lead.pipelineId === activePipelineId);
+        
         return (
-          <KanbanBoard
-            stages={mockStages}
-            leads={leads}
-            onLeadMove={handleLeadMove}
-            onLeadEdit={handleLeadEdit}
-            onLeadDelete={handleLeadDelete}
-          />
+          <div className="flex-1 space-y-4">
+            <div className="p-6 pb-0">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground mb-2">Pipeline de Vendas</h2>
+                  <div className="flex gap-4 text-sm text-muted-foreground">
+                    <span>Total de leads: {pipelineLeads.length}</span>
+                    <span>Valor total: R$ {pipelineLeads.reduce((sum, lead) => sum + lead.value, 0).toLocaleString()}</span>
+                  </div>
+                </div>
+                <select
+                  value={activePipelineId}
+                  onChange={(e) => setActivePipelineId(e.target.value)}
+                  className="px-3 py-2 border rounded-md bg-background"
+                >
+                  {pipelines.map(pipeline => (
+                    <option key={pipeline.id} value={pipeline.id}>
+                      {pipeline.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            {activePipeline && (
+              <KanbanBoard
+                stages={activePipeline.stages}
+                leads={pipelineLeads}
+                onLeadMove={handleLeadMove}
+                onLeadEdit={handleLeadEdit}
+                onLeadDelete={handleLeadDelete}
+              />
+            )}
+          </div>
         );
       
       case 'leads':
@@ -153,6 +188,26 @@ const Index = () => {
           </div>
         );
       
+      case 'pipelines':
+        return (
+          <div className="flex-1 p-6">
+            <PipelineManager 
+              pipelines={pipelines}
+              onPipelineUpdate={setPipelines}
+            />
+          </div>
+        );
+      
+      case 'custom-fields':
+        return (
+          <div className="flex-1 p-6">
+            <CustomFieldManager 
+              customFields={customFields}
+              onFieldsUpdate={setCustomFields}
+            />
+          </div>
+        );
+
       case 'settings':
         return (
           <div className="flex-1 p-6">
@@ -181,8 +236,8 @@ const Index = () => {
       
       <LeadForm
         lead={selectedLead}
-        pipelines={mockPipelines}
-        customFields={mockCustomFields}
+        pipelines={pipelines}
+        customFields={customFields}
         isOpen={isLeadFormOpen}
         onClose={() => {
           setIsLeadFormOpen(false);

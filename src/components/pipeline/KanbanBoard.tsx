@@ -82,13 +82,6 @@ export function KanbanBoard({
 
   return (
     <div className="flex-1 p-6 bg-kanban-bg">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground mb-2">Pipeline de Vendas</h2>
-        <div className="flex gap-4 text-sm text-muted-foreground">
-          <span>Total de leads: {leads.length}</span>
-          <span>Valor total: R$ {leads.reduce((sum, lead) => sum + lead.value, 0).toLocaleString()}</span>
-        </div>
-      </div>
 
       <DndContext 
         sensors={sensors} 

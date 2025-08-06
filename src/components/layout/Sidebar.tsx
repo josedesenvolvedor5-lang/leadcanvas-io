@@ -24,6 +24,8 @@ const menuItems = [
   { id: 'leads', label: 'Leads', icon: Users },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'webhooks', label: 'Webhooks', icon: Webhook },
+  { id: 'pipelines', label: 'Pipelines', icon: GitBranch },
+  { id: 'custom-fields', label: 'Campos', icon: Settings },
   { id: 'settings', label: 'Configurações', icon: Settings },
 ];
 
