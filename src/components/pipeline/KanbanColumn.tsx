@@ -4,6 +4,8 @@ import { Lead, Stage } from '@/types/crm';
 import { LeadCard } from './LeadCard';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 
 interface KanbanColumnProps {
   stage: Stage;
@@ -12,6 +14,7 @@ interface KanbanColumnProps {
   total: number;
   onLeadEdit: (lead: Lead) => void;
   onLeadDelete: (leadId: string) => void;
+  onAddLead: (stageId: string) => void;
 }
 
 export function KanbanColumn({ 
@@ -20,7 +23,8 @@ export function KanbanColumn({
   count, 
   total, 
   onLeadEdit, 
-  onLeadDelete 
+  onLeadDelete,
+  onAddLead
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage.id,
@@ -45,6 +49,16 @@ export function KanbanColumn({
           Valor total: R$ {total.toLocaleString()}
         </div>
       </div>
+      
+      <Button 
+        onClick={() => onAddLead(stage.id)}
+        variant="outline" 
+        size="sm" 
+        className="mb-3 w-full"
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Adicionar Lead
+      </Button>
 
       <Card 
         ref={setNodeRef}

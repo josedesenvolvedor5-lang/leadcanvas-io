@@ -87,6 +87,11 @@ const Index = () => {
     setIsLeadFormOpen(true);
   };
 
+  const handleAddLead = (stageId: string) => {
+    setSelectedLead(undefined);
+    setIsLeadFormOpen(true);
+  };
+
   const handleViewChange = (view: string) => {
     if (view === 'new-lead') {
       handleNewLead();
@@ -150,6 +155,7 @@ const Index = () => {
                 onLeadMove={handleLeadMove}
                 onLeadEdit={handleLeadEdit}
                 onLeadDelete={handleLeadDelete}
+                onAddLead={handleAddLead}
               />
             )}
           </div>

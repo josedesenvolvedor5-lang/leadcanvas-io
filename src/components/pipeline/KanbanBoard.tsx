@@ -21,6 +21,7 @@ interface KanbanBoardProps {
   onLeadMove: (leadId: string, newStageId: string) => void;
   onLeadEdit: (lead: Lead) => void;
   onLeadDelete: (leadId: string) => void;
+  onAddLead: (stageId: string) => void;
 }
 
 export function KanbanBoard({ 
@@ -28,7 +29,8 @@ export function KanbanBoard({
   leads, 
   onLeadMove, 
   onLeadEdit, 
-  onLeadDelete 
+  onLeadDelete,
+  onAddLead
 }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
@@ -103,6 +105,7 @@ export function KanbanBoard({
                   total={stageTotal?.total || 0}
                   onLeadEdit={onLeadEdit}
                   onLeadDelete={onLeadDelete}
+                  onAddLead={onAddLead}
                 />
               );
             })}
