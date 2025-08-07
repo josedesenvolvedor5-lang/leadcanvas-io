@@ -6,8 +6,10 @@ import { StatsCards } from '@/components/dashboard/StatsCards';
 import { PipelineOverview } from '@/components/dashboard/PipelineOverview';
 import { PipelineManager } from '@/components/management/PipelineManager';
 import { CustomFieldManager } from '@/components/management/CustomFieldManager';
-import { mockLeads, mockPipelines, mockStages, mockCustomFields } from '@/data/mockData';
-import { Lead, Pipeline, CustomField } from '@/types/crm';
+import { AIAgentManager } from '@/components/ai/AIAgentManager';
+import { MessageCenter } from '@/components/ai/MessageCenter';
+import { mockLeads, mockPipelines, mockStages, mockCustomFields, mockAIAgents, mockMessages } from '@/data/mockData';
+import { Lead, Pipeline, CustomField, AIAgent, Message } from '@/types/crm';
 import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
@@ -15,6 +17,8 @@ const Index = () => {
   const [leads, setLeads] = useState(mockLeads);
   const [pipelines, setPipelines] = useState(mockPipelines);
   const [customFields, setCustomFields] = useState(mockCustomFields);
+  const [aiAgents, setAiAgents] = useState(mockAIAgents);
+  const [messages, setMessages] = useState(mockMessages);
   const [activePipelineId, setActivePipelineId] = useState(mockPipelines[0]?.id || '');
   const [selectedLead, setSelectedLead] = useState<Lead | undefined>();
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
@@ -73,6 +77,10 @@ const Index = () => {
       } as Lead;
       
       setLeads(prev => [...prev, newLead]);
+      
+      // Trigger AI agents for new lead
+      triggerAIAgents(newLead);
+      
       toast({
         title: "Lead criado",
         description: "Novo lead foi criado com sucesso",
@@ -80,6 +88,67 @@ const Index = () => {
     }
     
     setSelectedLead(undefined);
+  };
+
+  const triggerAIAgents = (lead: Lead) => {
+    const activeAgents = aiAgents.filter(agent => agent.isActive);
+    
+    activeAgents.forEach(agent => {
+      agent.triggers?.forEach(trigger => {
+        if (trigger.type === 'new_lead') {
+          // Simulate AI message generation and sending
+          const template = agent.messageTemplates?.[0];
+          if (template) {
+            const personalizedContent = template.content
+              .replace(/\{\{name\}\}/g, lead.name)
+              .replace(/\{\{company\}\}/g, lead.company || 'sua empresa')
+              .replace(/\{\{email\}\}/g, lead.email || '');
+
+            const newMessage: Message = {
+              id: `msg-${Date.now()}-${Math.random()}`,
+              leadId: lead.id,
+              agentId: agent.id,
+              type: template.type,
+              content: personalizedContent,
+              status: 'pending',
+              createdAt: new Date().toISOString()
+            };
+
+            // Simulate delay and status changes
+            setMessages(prev => [...prev, newMessage]);
+            
+            // Simulate sending after delay
+            setTimeout(() => {
+              setMessages(prev => prev.map(msg => 
+                msg.id === newMessage.id 
+                  ? { ...msg, status: 'sent', sentAt: new Date().toISOString() }
+                  : msg
+              ));
+              
+              // Simulate delivery after another delay
+              setTimeout(() => {
+                setMessages(prev => prev.map(msg => 
+                  msg.id === newMessage.id 
+                    ? { ...msg, status: 'delivered' }
+                    : msg
+                ));
+              }, 2000);
+            }, (trigger.delay || 0) * 1000);
+          }
+        }
+      });
+    });
+  };
+
+  const handleSendMessage = (messageData: Partial<Message>) => {
+    const newMessage: Message = {
+      ...messageData,
+      id: `msg-${Date.now()}`,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    } as Message;
+    
+    setMessages(prev => [...prev, newMessage]);
   };
 
   const handleNewLead = () => {
@@ -210,6 +279,28 @@ const Index = () => {
             <CustomFieldManager 
               customFields={customFields}
               onFieldsUpdate={setCustomFields}
+            />
+          </div>
+        );
+
+      case 'ai-agents':
+        return (
+          <div className="flex-1 p-6">
+            <AIAgentManager 
+              agents={aiAgents}
+              onAgentUpdate={setAiAgents}
+            />
+          </div>
+        );
+
+      case 'messages':
+        return (
+          <div className="flex-1 p-6">
+            <MessageCenter 
+              messages={messages}
+              leads={leads}
+              agents={aiAgents}
+              onSendMessage={handleSendMessage}
             />
           </div>
         );

@@ -10,7 +10,9 @@ import {
   Webhook,
   BarChart3,
   Menu,
-  X
+  X,
+  Bot,
+  MessageSquare
 } from "lucide-react";
 
 interface SidebarProps {
@@ -22,8 +24,10 @@ const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'pipeline', label: 'Pipeline', icon: GitBranch },
   { id: 'leads', label: 'Leads', icon: Users },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'webhooks', label: 'Webhooks', icon: Webhook },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'ai-agents', label: 'Agentes IA', icon: Bot },
+    { id: 'messages', label: 'Mensagens', icon: MessageSquare },
+    { id: 'webhooks', label: 'Webhooks', icon: Webhook },
   { id: 'pipelines', label: 'Pipelines', icon: GitBranch },
   { id: 'custom-fields', label: 'Campos', icon: Settings },
   { id: 'settings', label: 'Configurações', icon: Settings },
