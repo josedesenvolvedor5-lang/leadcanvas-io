@@ -8,6 +8,7 @@ import { PipelineManager } from '@/components/management/PipelineManager';
 import { CustomFieldManager } from '@/components/management/CustomFieldManager';
 import { AIAgentManager } from '@/components/ai/AIAgentManager';
 import { MessageCenter } from '@/components/ai/MessageCenter';
+import { AgentFlowVisualization } from '@/components/ai/AgentFlowVisualization';
 import { mockLeads, mockPipelines, mockStages, mockCustomFields, mockAIAgents, mockMessages } from '@/data/mockData';
 import { Lead, Pipeline, CustomField, AIAgent, Message } from '@/types/crm';
 import { useToast } from '@/hooks/use-toast';
@@ -286,10 +287,10 @@ const Index = () => {
       case 'ai-agents':
         return (
           <div className="flex-1 p-6">
-            <AIAgentManager 
-              agents={aiAgents}
-              onAgentUpdate={setAiAgents}
-            />
+            <div className="space-y-6">
+              <AgentFlowVisualization agents={aiAgents} />
+              <AIAgentManager agents={aiAgents} onAgentUpdate={setAiAgents} />
+            </div>
           </div>
         );
 

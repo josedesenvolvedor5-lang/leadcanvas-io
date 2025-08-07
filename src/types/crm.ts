@@ -72,10 +72,13 @@ export interface AIAgent {
   id: string;
   name: string;
   description: string;
+  type: 'welcome' | 'explanation' | 'technical_support' | 'closing' | 'followup';
   isActive: boolean;
   triggers: AITrigger[];
   messageTemplates: MessageTemplate[];
   settings: AISettings;
+  nextAgents?: string[]; // IDs dos próximos agentes possíveis
+  contextFields?: string[]; // Campos que este agente coleta/usa
   createdAt: string;
   updatedAt: string;
 }
@@ -112,4 +115,24 @@ export interface Message {
   status: 'pending' | 'sent' | 'delivered' | 'failed';
   sentAt?: string;
   createdAt: string;
+}
+
+export interface LeadContext {
+  leadId: string;
+  currentAgent?: string;
+  completedAgents: string[];
+  contextData: Record<string, any>;
+  lastInteraction: string;
+  isQualified?: boolean;
+  isInterested?: boolean;
+  needsHumanIntervention?: boolean;
+}
+
+export interface AgentTransfer {
+  fromAgentId: string;
+  toAgentId: string;
+  leadId: string;
+  reason: string;
+  contextSummary: string;
+  timestamp: string;
 }

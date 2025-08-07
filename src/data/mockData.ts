@@ -1,4 +1,4 @@
-import { Lead, Pipeline, Stage, CustomField, User, AIAgent, Message } from '@/types/crm';
+import { Lead, Pipeline, Stage, CustomField, User, AIAgent, Message, LeadContext } from '@/types/crm';
 
 export const mockUsers: User[] = [
   {
@@ -158,13 +158,14 @@ export const mockCustomFields: CustomField[] = [
 
 export const mockAIAgents: AIAgent[] = [
   {
-    id: '1',
+    id: 'agent-welcome',
     name: 'Agente de Boas-vindas',
-    description: 'Envia mensagens de boas-vindas para novos leads automaticamente',
+    description: 'Recebe novos leads, qualifica e coleta informações iniciais',
+    type: 'welcome',
     isActive: true,
     triggers: [
       {
-        id: '1',
+        id: 'trigger-welcome',
         type: 'new_lead',
         conditions: {},
         delay: 5
@@ -172,11 +173,11 @@ export const mockAIAgents: AIAgent[] = [
     ],
     messageTemplates: [
       {
-        id: '1',
-        name: 'Boas-vindas por E-mail',
+        id: 'template-welcome',
+        name: 'Boas-vindas e Qualificação',
         type: 'email',
-        subject: 'Bem-vindo! {{name}}',
-        content: 'Olá {{name}}, obrigado pelo seu interesse! Em breve entraremos em contato para apresentar nossa solução personalizada para {{company}}.',
+        subject: 'Bem-vindo! {{name}} - Vamos conversar?',
+        content: 'Olá {{name}}, obrigado por se interessar pelos nossos serviços. Para te atender melhor, gostaria de entender suas necessidades. Qual seria o melhor horário para conversarmos?',
         variables: ['name', 'company', 'email']
       }
     ],
@@ -184,42 +185,169 @@ export const mockAIAgents: AIAgent[] = [
       model: 'gpt-4',
       temperature: 0.7,
       maxTokens: 500,
-      systemPrompt: 'Você é um assistente de vendas especializado em CRM. Seja profissional, prestativo e personalizado nas mensagens de boas-vindas.'
+      systemPrompt: 'Você é um agente de qualificação. Sua função é dar boas-vindas, coletar informações sobre necessidades do lead e qualificá-lo. Seja caloroso mas direto ao ponto.'
     },
+    nextAgents: ['agent-explanation', 'agent-technical'],
+    contextFields: ['budget', 'timeline', 'pain_points', 'decision_maker'],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   },
   {
-    id: '2',
-    name: 'Follow-up Qualificação',
-    description: 'Envia follow-ups para leads que estão na etapa de qualificação há mais de 2 dias',
+    id: 'agent-explanation',
+    name: 'Agente de Explicações',
+    description: 'Tira dúvidas sobre produtos, planos, preços e funcionalidades',
+    type: 'explanation',
     isActive: true,
     triggers: [
       {
-        id: '2',
-        type: 'time_based',
-        conditions: { stageId: '3', days: 2 },
+        id: 'trigger-explanation',
+        type: 'custom',
+        conditions: { previousAgent: 'agent-welcome', qualified: true },
         delay: 0
       }
     ],
     messageTemplates: [
       {
-        id: '2',
-        name: 'Follow-up Qualificação',
+        id: 'template-explanation',
+        name: 'Explicação de Produtos',
         type: 'email',
-        subject: 'Como podemos ajudar {{company}}?',
-        content: 'Oi {{name}}, notamos que você está interessado em nossas soluções. Que tal agendarmos uma conversa rápida para entender melhor suas necessidades?',
-        variables: ['name', 'company', 'email']
+        subject: 'Sobre nossa solução para {{company}}',
+        content: 'Olá {{name}}, baseado no que conversamos, nossa solução pode ajudar {{company}} com {{pain_points}}. Que tal uma demonstração personalizada?',
+        variables: ['name', 'company', 'pain_points']
       }
     ],
     settings: {
       model: 'gpt-4',
-      temperature: 0.8,
-      maxTokens: 400,
-      systemPrompt: 'Você é um assistente de vendas que faz follow-ups educados e não invasivos. Foque em ajudar o cliente.'
+      temperature: 0.6,
+      maxTokens: 600,
+      systemPrompt: 'Você é um especialista em produtos. Explique funcionalidades, benefícios e preços de forma clara e consultiva. Use o contexto do lead para personalizar.'
     },
+    nextAgents: ['agent-closing', 'agent-technical'],
+    contextFields: ['product_interest', 'features_discussed', 'pricing_range'],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'agent-technical',
+    name: 'Agente de Suporte Técnico',
+    description: 'Responde dúvidas técnicas e avalia viabilidade técnica',
+    type: 'technical_support',
+    isActive: true,
+    triggers: [
+      {
+        id: 'trigger-technical',
+        type: 'custom',
+        conditions: { technicalQuestions: true },
+        delay: 0
+      }
+    ],
+    messageTemplates: [
+      {
+        id: 'template-technical',
+        name: 'Suporte Técnico',
+        type: 'email',
+        subject: 'Esclarecimentos técnicos para {{company}}',
+        content: 'Olá {{name}}, vou ajudar com suas questões técnicas. Nossa plataforma se integra facilmente com sistemas existentes.',
+        variables: ['name', 'company', 'current_systems']
+      }
+    ],
+    settings: {
+      model: 'gpt-4',
+      temperature: 0.4,
+      maxTokens: 700,
+      systemPrompt: 'Você é um especialista técnico. Responda questões sobre integração, segurança, performance e arquitetura. Se não souber, encaminhe para humano.'
+    },
+    nextAgents: ['agent-explanation', 'agent-closing'],
+    contextFields: ['technical_requirements', 'integrations_needed', 'security_concerns'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'agent-closing',
+    name: 'Agente de Fechamento',
+    description: 'Envia propostas, negocia valores e finaliza vendas',
+    type: 'closing',
+    isActive: true,
+    triggers: [
+      {
+        id: 'trigger-closing',
+        type: 'custom',
+        conditions: { interested: true, budget_confirmed: true },
+        delay: 0
+      }
+    ],
+    messageTemplates: [
+      {
+        id: 'template-closing',
+        name: 'Proposta Comercial',
+        type: 'email',
+        subject: 'Proposta personalizada para {{company}}',
+        content: 'Olá {{name}}, preparei uma proposta especial para {{company}} baseada em suas necessidades. A proposta inclui {{solution_summary}}.',
+        variables: ['name', 'company', 'solution_summary', 'price']
+      }
+    ],
+    settings: {
+      model: 'gpt-4',
+      temperature: 0.5,
+      maxTokens: 800,
+      systemPrompt: 'Você é um especialista em fechamento. Crie propostas persuasivas, negocie termos e conduza o lead ao fechamento. Seja confiante mas flexível.'
+    },
+    nextAgents: ['agent-followup'],
+    contextFields: ['proposal_sent', 'negotiation_points', 'closing_objections'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'agent-followup',
+    name: 'Agente de Follow-up',
+    description: 'Monitora leads inativos e envia lembretes estratégicos',
+    type: 'followup',
+    isActive: true,
+    triggers: [
+      {
+        id: 'trigger-followup',
+        type: 'time_based',
+        conditions: { days: 3, noResponse: true },
+        delay: 0
+      }
+    ],
+    messageTemplates: [
+      {
+        id: 'template-followup',
+        name: 'Follow-up Estratégico',
+        type: 'email',
+        subject: 'Ainda interessado, {{name}}?',
+        content: 'Olá {{name}}, notei que não tivemos retorno sobre nossa proposta. Há alguma dúvida que posso esclarecer? Estou aqui para ajudar {{company}}.',
+        variables: ['name', 'company', 'last_interaction']
+      }
+    ],
+    settings: {
+      model: 'gpt-4',
+      temperature: 0.7,
+      maxTokens: 400,
+      systemPrompt: 'Você é especialista em reativação. Envie follow-ups educados e úteis. Ofereça valor e não seja invasivo. Saiba quando parar.'
+    },
+    nextAgents: ['agent-explanation', 'agent-closing'],
+    contextFields: ['followup_count', 'last_engagement', 'reactivation_trigger'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+];
+
+export const mockLeadContexts: LeadContext[] = [
+  {
+    leadId: '1',
+    currentAgent: 'agent-welcome',
+    completedAgents: [],
+    contextData: {
+      budget: '10k-25k',
+      timeline: '3 months',
+      pain_points: 'Manual lead management'
+    },
+    lastInteraction: new Date().toISOString(),
+    isQualified: true,
+    isInterested: true,
+    needsHumanIntervention: false
   }
 ];
 

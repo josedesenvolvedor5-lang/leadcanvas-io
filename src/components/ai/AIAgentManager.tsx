@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AIAgent, MessageTemplate, AITrigger } from '@/types/crm';
+import { AIAgent, MessageTemplate, AITrigger, LeadContext, AgentTransfer } from '@/types/crm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,7 +27,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Plus, Settings, MessageSquare, Zap } from 'lucide-react';
+import { Bot, Plus, Settings, MessageSquare, Zap, ArrowRight, Users, Brain, Headphones, Handshake, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface AIAgentManagerProps {
@@ -35,15 +35,40 @@ interface AIAgentManagerProps {
   onAgentUpdate: (agents: AIAgent[]) => void;
 }
 
+const getAgentIcon = (type: AIAgent['type']) => {
+  switch (type) {
+    case 'welcome': return UserCheck;
+    case 'explanation': return Users;
+    case 'technical_support': return Headphones;
+    case 'closing': return Handshake;
+    case 'followup': return Brain;
+    default: return Bot;
+  }
+};
+
+const getAgentTypeLabel = (type: AIAgent['type']) => {
+  switch (type) {
+    case 'welcome': return 'Boas-vindas';
+    case 'explanation': return 'Explicações';
+    case 'technical_support': return 'Suporte Técnico';
+    case 'closing': return 'Fechamento';
+    case 'followup': return 'Follow-up';
+    default: return 'Geral';
+  }
+};
+
 export function AIAgentManager({ agents, onAgentUpdate }: AIAgentManagerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
   const [formData, setFormData] = useState<Partial<AIAgent>>({
     name: '',
     description: '',
+    type: 'welcome',
     isActive: true,
     triggers: [],
     messageTemplates: [],
+    nextAgents: [],
+    contextFields: [],
     settings: {
       model: 'gpt-4',
       temperature: 0.7,
@@ -58,9 +83,12 @@ export function AIAgentManager({ agents, onAgentUpdate }: AIAgentManagerProps) {
     setFormData({
       name: '',
       description: '',
+      type: 'welcome',
       isActive: true,
       triggers: [],
       messageTemplates: [],
+      nextAgents: [],
+      contextFields: [],
       settings: {
         model: 'gpt-4',
         temperature: 0.7,
@@ -179,15 +207,23 @@ export function AIAgentManager({ agents, onAgentUpdate }: AIAgentManagerProps) {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Bot className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">{agent.name}</CardTitle>
+                  {(() => {
+                    const IconComponent = getAgentIcon(agent.type);
+                    return <IconComponent className="h-5 w-5 text-primary" />;
+                  })()}
+                  <div>
+                    <CardTitle className="text-lg">{agent.name}</CardTitle>
+                    <Badge variant="outline" className="text-xs mt-1">
+                      {getAgentTypeLabel(agent.type)}
+                    </Badge>
+                  </div>
                 </div>
                 <Switch
                   checked={agent.isActive}
                   onCheckedChange={() => toggleAgentStatus(agent.id)}
                 />
               </div>
-              <CardDescription>{agent.description}</CardDescription>
+              <CardDescription className="mt-2">{agent.description}</CardDescription>
             </CardHeader>
             
             <CardContent className="space-y-4">
@@ -213,6 +249,16 @@ export function AIAgentManager({ agents, onAgentUpdate }: AIAgentManagerProps) {
                   <span>{agent.messageTemplates?.length || 0}</span>
                 </div>
               </div>
+              
+              {agent.nextAgents && agent.nextAgents.length > 0 && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Próximos Agentes:</span>
+                  <div className="flex items-center space-x-1 mt-1">
+                    <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs">{agent.nextAgents.length} configurados</span>
+                  </div>
+                </div>
+              )}
               
               <div className="flex space-x-2 pt-2">
                 <Button
@@ -260,6 +306,25 @@ export function AIAgentManager({ agents, onAgentUpdate }: AIAgentManagerProps) {
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Ex: Agente de Boas-vindas"
                   />
+                </div>
+                
+                <div>
+                  <Label htmlFor="type">Tipo de Agente</Label>
+                  <Select 
+                    value={formData.type} 
+                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, type: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="welcome">Boas-vindas / Qualificação</SelectItem>
+                      <SelectItem value="explanation">Explicações de Produto</SelectItem>
+                      <SelectItem value="technical_support">Suporte Técnico</SelectItem>
+                      <SelectItem value="closing">Fechamento</SelectItem>
+                      <SelectItem value="followup">Follow-up</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div>
@@ -362,6 +427,65 @@ export function AIAgentManager({ agents, onAgentUpdate }: AIAgentManagerProps) {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Agent Flow Configuration */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Configuração de Fluxo</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Próximos Agentes Possíveis</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Selecione quais agentes podem receber leads deste agente
+                  </p>
+                  <div className="space-y-2">
+                    {agents.filter(a => a.id !== selectedAgent?.id).map(agent => (
+                      <div key={agent.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`next-${agent.id}`}
+                          checked={formData.nextAgents?.includes(agent.id) || false}
+                          onChange={(e) => {
+                            const nextAgents = formData.nextAgents || [];
+                            if (e.target.checked) {
+                              setFormData(prev => ({ 
+                                ...prev, 
+                                nextAgents: [...nextAgents, agent.id] 
+                              }));
+                            } else {
+                              setFormData(prev => ({ 
+                                ...prev, 
+                                nextAgents: nextAgents.filter(id => id !== agent.id) 
+                              }));
+                            }
+                          }}
+                          className="rounded"
+                        />
+                        <Label htmlFor={`next-${agent.id}`} className="text-sm">
+                          {agent.name} ({getAgentTypeLabel(agent.type)})
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <Label>Campos de Contexto</Label>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Campos que este agente coleta ou utiliza (separados por vírgula)
+                  </p>
+                  <Input
+                    placeholder="Ex: budget, timeline, pain_points"
+                    value={formData.contextFields?.join(', ') || ''}
+                    onChange={(e) => {
+                      const fields = e.target.value.split(',').map(f => f.trim()).filter(f => f);
+                      setFormData(prev => ({ ...prev, contextFields: fields }));
+                    }}
+                  />
+                </div>
               </CardContent>
             </Card>
 
