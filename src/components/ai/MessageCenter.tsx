@@ -26,7 +26,10 @@ import {
   XCircle, 
   Send,
   Search,
-  Filter
+  Filter,
+  Smile,
+  Meh,
+  Frown
 } from 'lucide-react';
 
 interface MessageCenterProps {
@@ -99,9 +102,31 @@ export function MessageCenter({
       default:
         return 'secondary';
     }
-  };
+};
 
-  return (
+const getSentimentBadgeVariant = (sentiment: NonNullable<Message['sentiment']>) => {
+  switch (sentiment) {
+    case 'positive':
+      return 'default';
+    case 'negative':
+      return 'destructive';
+    default:
+      return 'secondary';
+  }
+};
+
+const getSentimentIcon = (sentiment: NonNullable<Message['sentiment']>) => {
+  switch (sentiment) {
+    case 'positive':
+      return <Smile className="h-4 w-4" />;
+    case 'negative':
+      return <Frown className="h-4 w-4" />;
+    default:
+      return <Meh className="h-4 w-4" />;
+  }
+};
+
+return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground mb-2">Central de Mensagens</h1>
@@ -283,9 +308,18 @@ export function MessageCenter({
                         </Badge>
                       </div>
                       
-                      <Badge variant="outline">
-                        {message.type.toUpperCase()}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{message.type.toUpperCase()}</Badge>
+                        {message.sentiment && (
+                          <Badge variant={getSentimentBadgeVariant(message.sentiment)} className="flex items-center gap-1">
+                            {getSentimentIcon(message.sentiment)}
+                            <span className="capitalize">{message.sentiment}</span>
+                            {typeof message.sentimentScore === 'number' && (
+                              <span>{Math.round(message.sentimentScore * 100)}%</span>
+                            )}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>

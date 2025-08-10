@@ -115,7 +115,10 @@ export interface Message {
   status: 'pending' | 'sent' | 'delivered' | 'failed';
   sentAt?: string;
   createdAt: string;
+  sentiment?: 'positive' | 'neutral' | 'negative';
+  sentimentScore?: number;
 }
+
 
 export interface LeadContext {
   leadId: string;

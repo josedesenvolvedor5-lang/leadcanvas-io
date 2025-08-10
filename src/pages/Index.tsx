@@ -12,6 +12,7 @@ import { AgentFlowVisualization } from '@/components/ai/AgentFlowVisualization';
 import { mockLeads, mockPipelines, mockStages, mockCustomFields, mockAIAgents, mockMessages } from '@/data/mockData';
 import { Lead, Pipeline, CustomField, AIAgent, Message } from '@/types/crm';
 import { useToast } from '@/hooks/use-toast';
+import { analyzeSentiment } from '@/lib/ai/sentiment';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState('pipeline');
@@ -117,6 +118,14 @@ const Index = () => {
 
             // Simulate delay and status changes
             setMessages(prev => [...prev, newMessage]);
+            // Analyze sentiment asynchronously (non-blocking)
+            analyzeSentiment(personalizedContent)
+              .then(({ label, score }) => {
+                setMessages(prev => prev.map(msg => 
+                  msg.id === newMessage.id ? { ...msg, sentiment: label, sentimentScore: score } : msg
+                ));
+              })
+              .catch(() => {});
             
             // Simulate sending after delay
             setTimeout(() => {
@@ -150,6 +159,15 @@ const Index = () => {
     } as Message;
     
     setMessages(prev => [...prev, newMessage]);
+    if (newMessage.content) {
+      analyzeSentiment(newMessage.content)
+        .then(({ label, score }) => {
+          setMessages(prev => prev.map(m => 
+            m.id === newMessage.id ? { ...m, sentiment: label, sentimentScore: score } : m
+          ));
+        })
+        .catch(() => {});
+    }
   };
 
   const handleNewLead = () => {
