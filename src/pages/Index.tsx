@@ -13,6 +13,8 @@ import { mockLeads, mockPipelines, mockStages, mockCustomFields, mockAIAgents, m
 import { Lead, Pipeline, CustomField, AIAgent, Message } from '@/types/crm';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeSentiment } from '@/lib/ai/sentiment';
+import { sendWhatsAppText } from '@/lib/integrations/whatsapp';
+import { WhatsAppSettings } from '@/components/settings/WhatsAppSettings';
 
 const Index = () => {
   const [currentView, setCurrentView] = useState('pipeline');
@@ -116,7 +118,7 @@ const Index = () => {
               createdAt: new Date().toISOString()
             };
 
-            // Simulate delay and status changes
+            // Add message and analyze sentiment
             setMessages(prev => [...prev, newMessage]);
             // Analyze sentiment asynchronously (non-blocking)
             analyzeSentiment(personalizedContent)
@@ -127,23 +129,59 @@ const Index = () => {
               })
               .catch(() => {});
             
-            // Simulate sending after delay
-            setTimeout(() => {
-              setMessages(prev => prev.map(msg => 
-                msg.id === newMessage.id 
-                  ? { ...msg, status: 'sent', sentAt: new Date().toISOString() }
-                  : msg
-              ));
-              
-              // Simulate delivery after another delay
+            const delayMs = (trigger.delay || 0) * 1000;
+            if (template.type === 'whatsapp') {
+              if (!lead.phone) {
+                setMessages(prev => prev.map(msg => 
+                  msg.id === newMessage.id ? { ...msg, status: 'failed' } : msg
+                ));
+                toast({
+                  title: 'WhatsApp: telefone ausente',
+                  description: 'O lead não possui número de telefone.',
+                  variant: 'destructive',
+                });
+              } else {
+                setTimeout(async () => {
+                  const res = await sendWhatsAppText({ to: lead.phone!, body: personalizedContent });
+                  if (!res.ok) {
+                    setMessages(prev => prev.map(msg => 
+                      msg.id === newMessage.id ? { ...msg, status: 'failed' } : msg
+                    ));
+                    toast({
+                      title: 'Falha no envio WhatsApp',
+                      description: res.error || 'Verifique as credenciais nas Configurações.',
+                      variant: 'destructive',
+                    });
+                    return;
+                  }
+                  // Simulate status progression (no-cors)
+                  setMessages(prev => prev.map(msg => 
+                    msg.id === newMessage.id ? { ...msg, status: 'sent', sentAt: new Date().toISOString() } : msg
+                  ));
+                  setTimeout(() => {
+                    setMessages(prev => prev.map(msg => 
+                      msg.id === newMessage.id ? { ...msg, status: 'delivered' } : msg
+                    ));
+                  }, 2000);
+                }, delayMs);
+              }
+            } else {
+              // Keep previous simulation for non-WhatsApp
               setTimeout(() => {
                 setMessages(prev => prev.map(msg => 
                   msg.id === newMessage.id 
-                    ? { ...msg, status: 'delivered' }
+                    ? { ...msg, status: 'sent', sentAt: new Date().toISOString() }
                     : msg
                 ));
-              }, 2000);
-            }, (trigger.delay || 0) * 1000);
+                setTimeout(() => {
+                  setMessages(prev => prev.map(msg => 
+                    msg.id === newMessage.id 
+                      ? { ...msg, status: 'delivered' }
+                      : msg
+                  ));
+                }, 2000);
+              }, delayMs);
+            }
           }
         }
       });
@@ -157,16 +195,37 @@ const Index = () => {
       status: 'pending',
       createdAt: new Date().toISOString(),
     } as Message;
-    
+
     setMessages(prev => [...prev, newMessage]);
+
     if (newMessage.content) {
       analyzeSentiment(newMessage.content)
         .then(({ label, score }) => {
-          setMessages(prev => prev.map(m => 
-            m.id === newMessage.id ? { ...m, sentiment: label, sentimentScore: score } : m
-          ));
+          setMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, sentiment: label, sentimentScore: score } : m));
         })
         .catch(() => {});
+    }
+
+    if (newMessage.type === 'whatsapp') {
+      const lead = leads.find(l => l.id === newMessage.leadId);
+      if (!lead?.phone) {
+        setMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, status: 'failed' } : m));
+        toast({ title: 'WhatsApp: telefone ausente', description: 'O lead não possui número de telefone.', variant: 'destructive' });
+        return;
+      }
+      // Send immediately (frontend-only) and simulate status
+      (async () => {
+        const res = await sendWhatsAppText({ to: lead.phone!, body: newMessage.content });
+        if (!res.ok) {
+          setMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, status: 'failed' } : m));
+          toast({ title: 'Falha no envio WhatsApp', description: res.error || 'Verifique as credenciais nas Configurações.', variant: 'destructive' });
+          return;
+        }
+        setMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, status: 'sent', sentAt: new Date().toISOString() } : m));
+        setTimeout(() => {
+          setMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, status: 'delivered' } : m));
+        }, 2000);
+      })();
     }
   };
 
@@ -331,7 +390,9 @@ const Index = () => {
               <h1 className="text-3xl font-bold text-foreground mb-2">Configurações</h1>
               <p className="text-muted-foreground">Personalize seu CRM</p>
             </div>
-            {/* Add settings components here */}
+            <div className="space-y-6">
+              <WhatsAppSettings />
+            </div>
           </div>
         );
       
