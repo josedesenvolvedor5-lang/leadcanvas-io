@@ -193,18 +193,181 @@ export function AIAgentManager({ agents, onAgentUpdate }: AIAgentManagerProps) {
     }));
   };
 
+  const createAgentsForPipeline = (pipelineId: string) => {
+    const pipeline = mockPipelines.find(p => p.id === pipelineId);
+    if (!pipeline) return;
+
+    const newAgents: AIAgent[] = pipeline.stages.map((stage, index) => ({
+      id: `agent-${stage.id}-${Date.now()}`,
+      name: `Agente ${stage.name}`,
+      description: `Agente especializado para leads na fase "${stage.name}"`,
+      type: getAgentTypeForStage(stage.name),
+      isActive: true,
+      triggers: [{
+        id: `trigger-${stage.id}-${Date.now()}`,
+        type: 'stage_change' as const,
+        conditions: {
+          pipelineId: pipeline.id,
+          toStageId: stage.id
+        },
+        delay: 0
+      }],
+      messageTemplates: [{
+        id: `template-${stage.id}-${Date.now()}`,
+        name: `Mensagem ${stage.name}`,
+        type: 'whatsapp' as const,
+        content: getDefaultMessageForStage(stage.name),
+        variables: ['name', 'company', 'email']
+      }],
+      nextAgents: index < pipeline.stages.length - 1 ? [`agent-${pipeline.stages[index + 1].id}`] : [],
+      contextFields: ['name', 'email', 'phone', 'company'],
+      settings: {
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 500,
+        systemPrompt: `Você é um assistente especializado na fase "${stage.name}" do pipeline de vendas. ${getSystemPromptForStage(stage.name)}`
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }));
+
+    onAgentUpdate([...agents, ...newAgents]);
+    toast({
+      title: "Agentes criados",
+      description: `${newAgents.length} agentes foram criados para o pipeline "${pipeline.name}"`,
+    });
+  };
+
+  const getAgentTypeForStage = (stageName: string): AIAgent['type'] => {
+    const lowerStage = stageName.toLowerCase();
+    if (lowerStage.includes('novo') || lowerStage.includes('lead')) return 'welcome';
+    if (lowerStage.includes('qualific')) return 'explanation';
+    if (lowerStage.includes('proposta')) return 'closing';
+    if (lowerStage.includes('fechado') || lowerStage.includes('ganho')) return 'followup';
+    return 'technical_support';
+  };
+
+  const getDefaultMessageForStage = (stageName: string): string => {
+    const lowerStage = stageName.toLowerCase();
+    if (lowerStage.includes('novo') || lowerStage.includes('lead')) {
+      return 'Olá {{name}}! 👋 Bem-vindo! Recebemos seu interesse e estamos muito felizes em ter você conosco. Em breve nossa equipe entrará em contato para conhecer melhor suas necessidades.';
+    }
+    if (lowerStage.includes('contactado')) {
+      return 'Oi {{name}}! Nossa equipe já fez o primeiro contato com você. Agora vamos entender melhor como podemos ajudar sua {{company}}. Tem alguma dúvida específica que posso esclarecer?';
+    }
+    if (lowerStage.includes('qualific')) {
+      return 'Perfeito {{name}}! Vejo que você está qualificado para nossa solução. Vamos preparar uma proposta personalizada para {{company}}. Quando seria um bom momento para apresentarmos?';
+    }
+    if (lowerStage.includes('proposta')) {
+      return 'Ótimo {{name}}! Sua proposta está pronta. Preparamos uma solução sob medida para {{company}}. Vamos agendar uma apresentação? Tenho certeza que vai gostar do que preparamos!';
+    }
+    if (lowerStage.includes('fechado')) {
+      return 'Parabéns {{name}}! 🎉 Bem-vindo à família! Estamos muito animados para começar essa parceria com {{company}}. Nossa equipe de sucesso do cliente entrará em contato em breve.';
+    }
+    return 'Olá {{name}}, como posso ajudar você hoje?';
+  };
+
+  const getSystemPromptForStage = (stageName: string): string => {
+    const lowerStage = stageName.toLowerCase();
+    if (lowerStage.includes('novo') || lowerStage.includes('lead')) {
+      return 'Seja acolhedor e demonstre interesse genuíno. Foque em fazer o lead se sentir bem-vindo e valorizado.';
+    }
+    if (lowerStage.includes('contactado')) {
+      return 'Seja consultivo e faça perguntas qualificadoras. Entenda as necessidades e dores do lead.';
+    }
+    if (lowerStage.includes('qualific')) {
+      return 'Seja educativo e demonstre valor. Mostre como sua solução pode resolver os problemas identificados.';
+    }
+    if (lowerStage.includes('proposta')) {
+      return 'Seja persuasivo mas não agressivo. Foque nos benefícios e ROI da sua solução.';
+    }
+    if (lowerStage.includes('fechado')) {
+      return 'Seja celebrativo e profissional. Foque em onboarding e próximos passos.';
+    }
+    return 'Seja profissional, prestativo e personalizado nas mensagens.';
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Agentes de IA</h1>
-          <p className="text-muted-foreground">Configure agentes inteligentes para automação de mensagens</p>
+          <p className="text-muted-foreground">Configure agentes inteligentes para cada fase do pipeline</p>
         </div>
-        <Button onClick={handleCreateAgent} className="bg-gradient-primary">
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Agente
-        </Button>
+        <div className="flex gap-2">
+          <Select onValueChange={(pipelineId) => createAgentsForPipeline(pipelineId)}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Criar agentes por pipeline" />
+            </SelectTrigger>
+            <SelectContent>
+              {mockPipelines.map(pipeline => (
+                <SelectItem key={pipeline.id} value={pipeline.id}>
+                  {pipeline.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={handleCreateAgent} className="bg-gradient-primary">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Agente
+          </Button>
+        </div>
       </div>
+
+      {/* Pipeline Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Agentes por Pipeline</CardTitle>
+          <CardDescription>
+            Recomendação: Crie um agente para cada fase do pipeline para automação completa
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {mockPipelines.map(pipeline => {
+            const pipelineAgents = agents.filter(agent => 
+              agent.triggers?.some(trigger => trigger.conditions?.pipelineId === pipeline.id)
+            );
+            
+            return (
+              <div key={pipeline.id} className="mb-6 last:mb-0">
+                <h3 className="font-medium mb-3 flex items-center gap-2">
+                  {pipeline.name}
+                  <Badge variant="outline">{pipelineAgents.length} agentes</Badge>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+                  {pipeline.stages.map(stage => {
+                    const stageAgent = pipelineAgents.find(agent =>
+                      agent.triggers?.some(trigger => trigger.conditions?.toStageId === stage.id)
+                    );
+                    
+                    return (
+                      <div
+                        key={stage.id}
+                        className={`p-3 rounded border-2 text-center ${
+                          stageAgent 
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-dashed border-muted-foreground/30'
+                        }`}
+                      >
+                        <div className="text-sm font-medium">{stage.name}</div>
+                        {stageAgent ? (
+                          <div className="text-xs text-primary mt-1">
+                            ✓ {stageAgent.name}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Sem agente
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {agents.map((agent) => (
