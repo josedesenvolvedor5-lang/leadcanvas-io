@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AIAgent, MessageTemplate, AITrigger, LeadContext, AgentTransfer, Pipeline, Stage } from '@/types/crm';
 import { mockPipelines } from '@/data/mockData';
+import { AgentFlowBuilder } from './AgentFlowBuilder';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +29,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bot, Plus, Settings, MessageSquare, Zap, ArrowRight, Users, Brain, Headphones, Handshake, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -292,7 +294,7 @@ export function AIAgentManager({ agents, onAgentUpdate }: AIAgentManagerProps) {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Agentes de IA</h1>
-          <p className="text-muted-foreground">Configure agentes inteligentes para cada fase do pipeline</p>
+          <p className="text-muted-foreground">Configure agentes inteligentes e seus fluxos automatizados</p>
         </div>
         <div className="flex gap-2">
           <Select onValueChange={(pipelineId) => createAgentsForPipeline(pipelineId)}>
@@ -314,7 +316,14 @@ export function AIAgentManager({ agents, onAgentUpdate }: AIAgentManagerProps) {
         </div>
       </div>
 
-      {/* Pipeline Overview */}
+      <Tabs defaultValue="agents" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="agents">Gerenciar Agentes</TabsTrigger>
+          <TabsTrigger value="flows">Criar Fluxos</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="agents" className="space-y-6">
+          {/* Pipeline Overview */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Agentes por Pipeline</CardTitle>
@@ -449,7 +458,13 @@ export function AIAgentManager({ agents, onAgentUpdate }: AIAgentManagerProps) {
             </CardContent>
           </Card>
         ))}
-      </div>
+        </div>
+        </TabsContent>
+        
+        <TabsContent value="flows">
+          <AgentFlowBuilder agents={agents} onAgentUpdate={onAgentUpdate} />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
