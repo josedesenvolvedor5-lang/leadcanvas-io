@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { AIAgent, MessageTemplate, AITrigger, LeadContext, AgentTransfer } from '@/types/crm';
+import { AIAgent, MessageTemplate, AITrigger, LeadContext, AgentTransfer, Pipeline, Stage } from '@/types/crm';
+import { mockPipelines } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -161,8 +162,12 @@ export function AIAgentManager({ agents, onAgentUpdate }: AIAgentManagerProps) {
   const addTrigger = () => {
     const newTrigger: AITrigger = {
       id: `trigger-${Date.now()}`,
-      type: 'new_lead',
-      conditions: {},
+      type: 'stage_change',
+      conditions: {
+        fromStageId: '',
+        toStageId: '',
+        pipelineId: mockPipelines[0]?.id || ''
+      },
       delay: 0
     };
     
@@ -405,24 +410,155 @@ export function AIAgentManager({ agents, onAgentUpdate }: AIAgentManagerProps) {
                 {formData.triggers?.length === 0 ? (
                   <p className="text-muted-foreground text-sm">Nenhum trigger configurado</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     {formData.triggers?.map((trigger, index) => (
-                      <div key={trigger.id} className="flex items-center justify-between p-2 border rounded">
-                        <span className="text-sm">
-                          {trigger.type === 'new_lead' && 'Novo Lead'}
-                          {trigger.type === 'stage_change' && 'Mudança de Etapa'}
-                          {trigger.type === 'time_based' && 'Baseado em Tempo'}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const newTriggers = formData.triggers?.filter(t => t.id !== trigger.id);
-                            setFormData(prev => ({ ...prev, triggers: newTriggers }));
-                          }}
-                        >
-                          Remover
-                        </Button>
+                      <div key={trigger.id} className="border rounded p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium">Trigger {index + 1}</h4>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const newTriggers = formData.triggers?.filter(t => t.id !== trigger.id);
+                              setFormData(prev => ({ ...prev, triggers: newTriggers }));
+                            }}
+                          >
+                            Remover
+                          </Button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Tipo de Trigger</Label>
+                            <Select 
+                              value={trigger.type} 
+                              onValueChange={(value: any) => {
+                                const newTriggers = formData.triggers?.map(t => 
+                                  t.id === trigger.id ? { ...t, type: value, conditions: value === 'new_lead' ? {} : t.conditions } : t
+                                );
+                                setFormData(prev => ({ ...prev, triggers: newTriggers }));
+                              }}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="new_lead">Novo Lead</SelectItem>
+                                <SelectItem value="stage_change">Mudança de Etapa</SelectItem>
+                                <SelectItem value="time_based">Baseado em Tempo</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          {trigger.type === 'stage_change' && (
+                            <>
+                              <div>
+                                <Label className="text-xs">Pipeline</Label>
+                                <Select 
+                                  value={trigger.conditions?.pipelineId} 
+                                  onValueChange={(value) => {
+                                    const newTriggers = formData.triggers?.map(t => 
+                                      t.id === trigger.id 
+                                        ? { ...t, conditions: { ...t.conditions, pipelineId: value, fromStageId: '', toStageId: '' } } 
+                                        : t
+                                    );
+                                    setFormData(prev => ({ ...prev, triggers: newTriggers }));
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue placeholder="Selecionar pipeline" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {mockPipelines.map(pipeline => (
+                                      <SelectItem key={pipeline.id} value={pipeline.id}>
+                                        {pipeline.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              
+                              <div>
+                                <Label className="text-xs">De (Etapa)</Label>
+                                <Select 
+                                  value={trigger.conditions?.fromStageId || ''} 
+                                  onValueChange={(value) => {
+                                    const newTriggers = formData.triggers?.map(t => 
+                                      t.id === trigger.id 
+                                        ? { ...t, conditions: { ...t.conditions, fromStageId: value } } 
+                                        : t
+                                    );
+                                    setFormData(prev => ({ ...prev, triggers: newTriggers }));
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue placeholder="Qualquer etapa" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="">Qualquer etapa</SelectItem>
+                                    {trigger.conditions?.pipelineId && 
+                                      mockPipelines
+                                        .find(p => p.id === trigger.conditions.pipelineId)
+                                        ?.stages.map(stage => (
+                                          <SelectItem key={stage.id} value={stage.id}>
+                                            {stage.name}
+                                          </SelectItem>
+                                        ))
+                                    }
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              
+                              <div>
+                                <Label className="text-xs">Para (Etapa)</Label>
+                                <Select 
+                                  value={trigger.conditions?.toStageId} 
+                                  onValueChange={(value) => {
+                                    const newTriggers = formData.triggers?.map(t => 
+                                      t.id === trigger.id 
+                                        ? { ...t, conditions: { ...t.conditions, toStageId: value } } 
+                                        : t
+                                    );
+                                    setFormData(prev => ({ ...prev, triggers: newTriggers }));
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue placeholder="Selecionar etapa destino" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {trigger.conditions?.pipelineId && 
+                                      mockPipelines
+                                        .find(p => p.id === trigger.conditions.pipelineId)
+                                        ?.stages.map(stage => (
+                                          <SelectItem key={stage.id} value={stage.id}>
+                                            {stage.name}
+                                          </SelectItem>
+                                        ))
+                                    }
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </>
+                          )}
+                          
+                          {trigger.type === 'time_based' && (
+                            <div>
+                              <Label className="text-xs">Delay (minutos)</Label>
+                              <Input
+                                type="number"
+                                className="h-8"
+                                value={trigger.delay || 0}
+                                onChange={(e) => {
+                                  const newTriggers = formData.triggers?.map(t => 
+                                    t.id === trigger.id ? { ...t, delay: parseInt(e.target.value) || 0 } : t
+                                  );
+                                  setFormData(prev => ({ ...prev, triggers: newTriggers }));
+                                }}
+                                placeholder="0"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
